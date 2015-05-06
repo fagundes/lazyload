@@ -61,6 +61,23 @@ LazyLoad = (function (doc) {
   // -- Private Methods --------------------------------------------------------
 
   /**
+  Creates and returns a random number like GUID.
+
+  @method guid
+  @return {String}
+  @private
+  */
+  function guid() {
+    function s4() {
+      return Math.floor((1 + Math.random()) * 0x10000)
+        .toString(16)
+        .substring(1);
+    }
+    return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+      s4() + '-' + s4() + s4() + s4();
+  }
+
+  /**
   Creates and returns an HTML element with the specified name and attributes.
 
   @method createNode
@@ -105,7 +122,7 @@ LazyLoad = (function (doc) {
       // If this is the last of the pending URLs, execute the callback and
       // start the next request in the queue (if any).
       if (!urls.length) {
-        callback && callback.call(p.context, p.obj);
+        callback && callback.call(p.context, p.obj, p.ids);
         pending[type] = null;
         queue[type].length && load(type);
       }
@@ -162,7 +179,7 @@ LazyLoad = (function (doc) {
     var _finish = function () { finish(type); },
         isCSS   = type === 'css',
         nodes   = [],
-        i, len, node, p, pendingUrls, url;
+        i, id, len, node, p, pendingUrls, url;
 
     env || getEnv();
 
@@ -188,16 +205,18 @@ LazyLoad = (function (doc) {
           urls    : urls,
           callback: callback,
           obj     : obj,
-          context : context
+          context : context,
+          ids     : []
         });
       } else {
         // Load sequentially.
         for (i = 0, len = urls.length; i < len; ++i) {
           queue[type].push({
             urls    : [urls[i]],
-            callback: i === len - 1 ? callback : null, // callback is only added to the last URL
+            callback: i =node== len - 1 ? callback : null, // callback is only added to the last URL
             obj     : obj,
-            context : context
+            context : context,
+            ids     : []
           });
         }
       }
@@ -225,8 +244,16 @@ LazyLoad = (function (doc) {
         node.async = false;
       }
 
+      //creates a random node's id
+      id = guid();
+      p.ids.push(id);
+
       node.className = 'lazyload';
       node.setAttribute('charset', 'utf-8');
+      node.setAttribute('id',id);
+
+      //make sure to append node to head before to call finish
+      head.appendChild(node);
 
       if (env.ie && !isCSS && 'onreadystatechange' in node && !('draggable' in node)) {
         node.onreadystatechange = function () {
@@ -256,9 +283,6 @@ LazyLoad = (function (doc) {
       nodes.push(node);
     }
 
-    for (i = 0, len = nodes.length; i < len; ++i) {
-      head.appendChild(nodes[i]);
-    }
   }
 
   /**
